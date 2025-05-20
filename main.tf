@@ -205,7 +205,12 @@ resource "aws_iam_role_policy" "codebuild_policy" {
           "s3:PutObject"
         ]
         Resource = "${aws_s3_bucket.codepipeline_bucket.arn}/*"
-      }
+      },
+      {
+      Effect   = "Allow",
+      Action   = "codestar-connections:UseConnection",
+      Resource = aws_codestarconnections_connection.github.arn
+    }
     ]
   })
 }
@@ -731,6 +736,7 @@ resource "aws_codepipeline" "pipeline" {
         FullRepositoryId      = "luhercentti/awsdevopsstackdemo"
         BranchName           = "main"
         OutputArtifactFormat = "CODEBUILD_CLONE_REF"  # This is crucial for GitHub
+        DetectChanges       = true
       }
     }
   }
