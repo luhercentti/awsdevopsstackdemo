@@ -11,7 +11,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 
   tags = {
-    Name = "LHC-ecs-fargate-vpc"
+    Name = "ecs-fargate-vpc"
   }
 }
 
@@ -41,7 +41,7 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "LHC-main-internet-gateway"
+    Name = "main-internet-gateway"
   }
 }
 
@@ -69,7 +69,7 @@ resource "aws_route_table_association" "public_b" {
 }
 
 resource "aws_security_group" "ecs_sg" {
-  name        = "LHC-ecs-security-group"
+  name        = "ecs-security-group"
   description = "Allow inbound traffic for ECS"
   vpc_id      = aws_vpc.main.id
 
@@ -122,6 +122,33 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Additional policy for CloudWatch Logs creation
+resource "aws_iam_policy" "ecs_logs_policy" {
+  name        = "ecs-logs-policy"
+  description = "Allow ECS to create and write to CloudWatch Logs"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_logs_policy_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_logs_policy.arn
 }
 
 resource "aws_iam_role" "codebuild_role" {
@@ -267,7 +294,13 @@ resource "aws_ecr_repository" "app_repo" {
 # ECS Cluster, Task Definition, and Service
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_ecs_cluster" "main" {
-  name = "LHC-app-cluster"
+  name = "app-cluster"
+}
+
+# Create the CloudWatch log group explicitly
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/python-app"
+  retention_in_days = 30
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -293,10 +326,9 @@ resource "aws_ecs_task_definition" "app" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/python-app"
+          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
           "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
-          "awslogs-create-group"  = "true"
         }
       }
     }
@@ -321,7 +353,7 @@ resource "aws_ecs_service" "app_service" {
 # CodeBuild Project
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_codebuild_project" "app_build" {
-  name         = "LHC-python-app-build"
+  name         = "python-app-build"
   description  = "Build the Python application Docker image"
   service_role = aws_iam_role.codebuild_role.arn
 
@@ -370,15 +402,108 @@ resource "aws_s3_bucket_acl" "codepipeline_bucket_acl" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# CodePipeline - Replace with your GitHub repository information
+# Enhanced logging and monitoring for CodePipeline
 # ---------------------------------------------------------------------------------------------------------------------
+resource "aws_cloudwatch_log_group" "codepipeline_logs" {
+  name              = "/aws/codepipeline/python-app-pipeline"
+  retention_in_days = 7
+}
+
+# CloudTrail for tracking API calls
+resource "aws_cloudtrail" "pipeline_trail" {
+  name                          = "pipeline-activity-trail"
+  s3_bucket_name                = aws_s3_bucket.codepipeline_bucket.id
+  include_global_service_events = true
+  is_multi_region_trail         = false
+  enable_logging                = true
+
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = true
+
+    data_resource {
+      type   = "AWS::S3::Object"
+      values = ["${aws_s3_bucket.codepipeline_bucket.arn}/"]
+    }
+  }
+}
+
+# Allow CloudTrail to write to the S3 bucket
+resource "aws_s3_bucket_policy" "cloudtrail_bucket_policy" {
+  bucket = aws_s3_bucket.codepipeline_bucket.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AWSCloudTrailAclCheck"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:GetBucketAcl"
+        Resource = aws_s3_bucket.codepipeline_bucket.arn
+      },
+      {
+        Sid    = "AWSCloudTrailWrite"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.codepipeline_bucket.arn}/AWSLogs/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# CodeStar connection event rule to log connection status
+resource "aws_cloudwatch_event_rule" "codestar_connection_status" {
+  name        = "codestar-connection-status-events"
+  description = "Track status changes to CodeStar connections"
+
+  event_pattern = jsonencode({
+    source      = ["aws.codestar-connections"]
+    detail-type = ["CodeStar Connection Status Change"]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "connection_logs" {
+  rule      = aws_cloudwatch_event_rule.codestar_connection_status.name
+  target_id = "SendToCloudWatchLogs"
+  arn       = aws_cloudwatch_log_group.codepipeline_logs.arn
+}
+
+# Enhanced IAM role policy for pipeline to allow logging
+resource "aws_iam_role_policy" "codepipeline_logging_policy" {
+  name = "codepipeline-logging-policy"
+  role = aws_iam_role.codepipeline_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.codepipeline_logs.arn}:*"
+      }
+    ]
+  })
+}
 resource "aws_codestarconnections_connection" "github" {
-  name          = "LHC-github-connection"
+  name          = "github-connection"
   provider_type = "GitHub"
 }
 
 resource "aws_codepipeline" "pipeline" {
-  name     = "LHC-python-app-pipeline"
+  name     = "python-app-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
   artifact_store {
