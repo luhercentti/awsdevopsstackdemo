@@ -273,6 +273,20 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
           "iam:PassRole"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "codedeploy:CreateDeployment",
+          "codedeploy:GetDeployment",
+          "codedeploy:GetApplication",
+          "codedeploy:GetApplicationRevision",
+          "codedeploy:RegisterApplicationRevision",
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:GetDeploymentTarget",
+          "codedeploy:ListDeploymentTargets" 
+        ],
+        Resource = "*"
       }
     ]
   })
@@ -346,6 +360,74 @@ resource "aws_ecs_service" "app_service" {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
+  }
+
+  # This enables blue/green deployments with CodeDeploy
+  deployment_controller {
+    type = "CODE_DEPLOY"
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CodeDeploy for Blue/Green Deployment
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_iam_role" "codedeploy_role" {
+  name = "codedeploy-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "codedeploy.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
+  role       = aws_iam_role.codedeploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
+}
+
+resource "aws_codedeploy_app" "app" {
+  name             = "python-app-deploy"
+  compute_platform = "ECS"
+}
+
+resource "aws_codedeploy_deployment_group" "app_deploy_group" {
+  app_name               = aws_codedeploy_app.app.name
+  deployment_group_name  = "python-app-deploy-group"
+  deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
+  service_role_arn       = aws_iam_role.codedeploy_role.arn
+
+  auto_rollback_configuration {
+    enabled = true
+    events  = ["DEPLOYMENT_FAILURE"]
+  }
+
+  blue_green_deployment_config {
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
+
+    terminate_blue_instances_on_deployment_success {
+      action                           = "TERMINATE"
+      termination_wait_time_in_minutes = 1
+    }
+  }
+
+  deployment_style {
+    deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_type   = "BLUE_GREEN"
+  }
+
+  ecs_service {
+    cluster_name = aws_ecs_cluster.main.name
+    service_name = aws_ecs_service.app_service.name
   }
 }
 
@@ -497,6 +579,7 @@ resource "aws_iam_role_policy" "codepipeline_logging_policy" {
     ]
   })
 }
+
 resource "aws_codestarconnections_connection" "github" {
   name          = "github-connection"
   provider_type = "GitHub"
@@ -555,14 +638,19 @@ resource "aws_codepipeline" "pipeline" {
       name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "ECS"
+      provider        = "CodeDeployToECS"
       input_artifacts = ["build_output"]
       version         = "1"
 
       configuration = {
-        ClusterName = aws_ecs_cluster.main.name
-        ServiceName = aws_ecs_service.app_service.name
-        FileName    = "imagedefinitions.json"
+        ApplicationName                = aws_codedeploy_app.app.name
+        DeploymentGroupName            = aws_codedeploy_deployment_group.app_deploy_group.deployment_group_name
+        TaskDefinitionTemplateArtifact = "build_output"
+        AppSpecTemplateArtifact        = "build_output"
+        AppSpecTemplatePath            = "appspec.yml"
+        TaskDefinitionTemplatePath     = "taskdef.json"
+        Image1ArtifactName             = "build_output"
+        Image1ContainerName            = "IMAGE1_NAME"
       }
     }
   }

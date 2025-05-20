@@ -7,6 +7,10 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo Setting up task definition template...
+      - cp taskdef.json.template taskdef.json
+      - sed -i "s|EXECUTION_ROLE_ARN|$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)|g" taskdef.json
+      - sed -i "s|IMAGE1_NAME|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" taskdef.json
   
   build:
     commands:
@@ -28,4 +32,5 @@ artifacts:
   files:
     - imagedefinitions.json
     - appspec.yml
+    - taskdef.json
   discard-paths: yes
