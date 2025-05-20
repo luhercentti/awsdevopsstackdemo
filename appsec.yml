@@ -7,3 +7,15 @@ Resources:
         LoadBalancerInfo:
           ContainerName: "python-app"
           ContainerPort: 8080
+        PlatformVersion: "LATEST"
+        NetworkConfiguration:
+          AwsvpcConfiguration:
+            Subnets: ["subnet-public-a", "subnet-public-b"]
+            SecurityGroups: ["sg-ecs"]
+            AssignPublicIp: "ENABLED"
+# Hooks:
+#   - BeforeInstall: "BeforeInstallHookFunctionArn"
+#   - AfterInstall: "AfterInstallHookFunctionArn"
+#   - AfterAllowTestTraffic: "AfterAllowTestTrafficHookFunctionArn"
+#   - BeforeAllowTraffic: "BeforeAllowTrafficHookFunctionArn"
+#   - AfterAllowTraffic: "AfterAllowTrafficHookFunctionArn"

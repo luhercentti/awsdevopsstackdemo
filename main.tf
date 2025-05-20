@@ -305,6 +305,109 @@ resource "aws_ecr_repository" "app_repo" {
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
+# Load Balancer for ECS Service
+# ---------------------------------------------------------------------------------------------------------------------
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-security-group"
+  description = "Allow inbound traffic for ALB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "alb-security-group"
+  }
+}
+
+resource "aws_lb" "app_lb" {
+  name               = "app-load-balancer"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "app-load-balancer"
+  }
+}
+
+resource "aws_lb_target_group" "app_tg_blue" {
+  name        = "app-tg-blue"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    interval            = 30
+    path                = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_target_group" "app_tg_green" {
+  name        = "app-tg-green"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    interval            = 30
+    path                = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_listener" "app_listener" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg_blue.arn
+  }
+}
+
+resource "aws_lb_listener" "app_test_listener" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 8080
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg_green.arn
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
 # ECS Cluster, Task Definition, and Service
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_ecs_cluster" "main" {
@@ -362,9 +465,21 @@ resource "aws_ecs_service" "app_service" {
     assign_public_ip = true
   }
 
+  # Connect to the load balancer
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app_tg_blue.arn
+    container_name   = "python-app"
+    container_port   = 8080
+  }
+
   # This enables blue/green deployments with CodeDeploy
   deployment_controller {
     type = "CODE_DEPLOY"
+  }
+
+  # To prevent Terraform from trying to manage the service's desired count during updates
+  lifecycle {
+    ignore_changes = [task_definition, load_balancer]
   }
 }
 
@@ -428,6 +543,26 @@ resource "aws_codedeploy_deployment_group" "app_deploy_group" {
   ecs_service {
     cluster_name = aws_ecs_cluster.main.name
     service_name = aws_ecs_service.app_service.name
+  }
+
+  load_balancer_info {
+    target_group_pair_info {
+      prod_traffic_route {
+        listener_arns = [aws_lb_listener.app_listener.arn]
+      }
+
+      test_traffic_route {
+        listener_arns = [aws_lb_listener.app_test_listener.arn]
+      }
+
+      target_group {
+        name = aws_lb_target_group.app_tg_blue.name
+      }
+
+      target_group {
+        name = aws_lb_target_group.app_tg_green.name
+      }
+    }
   }
 }
 
