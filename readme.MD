@@ -77,3 +77,10 @@ This is a minimal example for demonstration purposes. For production use, you sh
 - Enhanced security measures
 - More robust health checks
 - Load balancer configuration
+
+
+
+/////
+
+terraform show -json tfplan.binary > tfplan.json
+infracost breakdown --path=tfplan.json
