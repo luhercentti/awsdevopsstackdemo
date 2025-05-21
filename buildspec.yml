@@ -1,41 +1,32 @@
 version: 0.2
 
-env:
-  variables:
-    REPOSITORY_URI: "$ECR_REPOSITORY_URI"
-    TASK_DEFINITION: "python-app"
-    CONTAINER_NAME: "python-app"
-
 phases:
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI || exit 1
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - echo "IMAGE_TAG=$IMAGE_TAG" >> env_vars
-      - echo "Preparing task definition..."
-      - TASK_ROLE_ARN=$(aws ecs describe-task-definition --task-definition $TASK_DEFINITION --query taskDefinition.executionRoleArn --output text)
-      - echo "TASK_ROLE_ARN=$TASK_ROLE_ARN" >> env_vars
-      - jq '.containerDefinitions[0].image = "'$REPOSITORY_URI:$IMAGE_TAG'" | .executionRoleArn = "'$TASK_ROLE_ARN'"' taskdef.json.template > taskdef.json
-      - cat taskdef.json
-
+      - echo Setting up task definition template...
+      - cp taskdef.json.template taskdef.json
+      - sed -i "s|EXECUTION_ROLE_ARN|$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)|g" taskdef.json
+      - sed -i "s|IMAGE1_NAME|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" taskdef.json
+  
   build:
     commands:
-      - echo "Build started on $(date)"
-      - echo "Building Docker image..."
-      - docker build -t $REPOSITORY_URI:latest .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
-
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $ECR_REPOSITORY_URI:latest .
+      - docker tag $ECR_REPOSITORY_URI:latest $ECR_REPOSITORY_URI:$IMAGE_TAG
+  
   post_build:
     commands:
-      - echo "Build completed on $(date)"
-      - echo "Pushing Docker images..."
-      - docker push $REPOSITORY_URI:latest
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "Creating image definitions file..."
-      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-      - cat imagedefinitions.json
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $ECR_REPOSITORY_URI:latest
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - echo '[{"name":"python-app","imageUri":"'$ECR_REPOSITORY_URI:$IMAGE_TAG'"}]' > imagedefinitions.json
 
 artifacts:
   files:
