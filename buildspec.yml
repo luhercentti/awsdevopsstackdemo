@@ -26,10 +26,7 @@ phases:
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
       - echo "Generating image definitions..."
-      - echo '[{
-          "name": "python-app",  // Must match task definition
-          "imageUri": "'${ECR_REPOSITORY_URI}:${IMAGE_TAG}'"
-        }]' > imagedefinitions.json
+      - printf '[{"name":"python-app","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > imagedefinitions.json
       - echo "Generated task definition:"
       - cat taskdef.json
       - echo "Generated image definitions:"
