@@ -25,8 +25,15 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo Writing image definitions file...
-      - echo '[{"name":"python-app","imageUri":"'$ECR_REPOSITORY_URI:$IMAGE_TAG'"}]' > imagedefinitions.json
+      - echo "Generating image definitions..."
+      - echo '[{
+          "name": "python-app",  // Must match task definition
+          "imageUri": "'${ECR_REPOSITORY_URI}:${IMAGE_TAG}'"
+        }]' > imagedefinitions.json
+      - echo "Generated task definition:"
+      - cat taskdef.json
+      - echo "Generated image definitions:"
+      - cat imagedefinitions.json
 
 artifacts:
   files:
