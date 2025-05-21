@@ -25,12 +25,23 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      # Create directory if it doesn't exist
+      - mkdir -p $CODEBUILD_SRC_DIR/output
       - echo "Generating image definitions..."
-      - printf '[{"name":"python-app","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > imagedefinitions.json
-      - echo "Generated task definition:"
+      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+       # Verify the file was created
+      - echo "File contents:"
+      - echo "--- imagedefinitions.json ---"
+      - cat $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+      - echo "File size:"
+      - ls -la $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+      - echo "Verifying artifacts..."
+      - echo "--- appspec.yml ---"
+      - cat appspec.yml
+      - echo "--- taskdef.json ---"
       - cat taskdef.json
-      - echo "Generated image definitions:"
-      - cat imagedefinitions.json
+      - echo "File listing:"
+      - ls -la
 
 artifacts:
   files:
@@ -38,4 +49,4 @@ artifacts:
     - appspec.yml
     - taskdef.json
   base-directory: $CODEBUILD_SRC_DIR  # Add this line
-  discard-paths: yes
+  discard-paths: no  # Changed to preserve directory structure

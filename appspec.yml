@@ -3,19 +3,13 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: <TASK_DEFINITION>
+        TaskDefinition: "<TASK_DEFINITION>"
         LoadBalancerInfo:
-          ContainerName: "python-app"
+          ContainerName: "python-app"  # Must match your container name exactly
           ContainerPort: 8080
-        PlatformVersion: "LATEST"
-        NetworkConfiguration:
-          AwsvpcConfiguration:
-            Subnets: ["subnet-public-a", "subnet-public-b"]
-            SecurityGroups: ["sg-ecs"]
-            AssignPublicIp: "ENABLED"
-# Hooks:
-#   - BeforeInstall: "BeforeInstallHookFunctionArn"
-#   - AfterInstall: "AfterInstallHookFunctionArn"
-#   - AfterAllowTestTraffic: "AfterAllowTestTrafficHookFunctionArn"
-#   - BeforeAllowTraffic: "BeforeAllowTrafficHookFunctionArn"
-#   - AfterAllowTraffic: "AfterAllowTrafficHookFunctionArn"
+Hooks:
+  - BeforeInstall: "ValidateService"
+  - AfterInstall: "AfterInstall"
+  - AfterAllowTestTraffic: "AfterAllowTestTraffic"
+  - BeforeAllowTraffic: "BeforeAllowTraffic"
+  - AfterAllowTraffic: "AfterAllowTraffic"
