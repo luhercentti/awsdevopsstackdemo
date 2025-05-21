@@ -316,250 +316,250 @@ resource "aws_ecr_repository" "app_repo" {
 # # ---------------------------------------------------------------------------------------------------------------------
 # # Load Balancer for ECS Service
 # # ---------------------------------------------------------------------------------------------------------------------
-# resource "aws_security_group" "alb_sg" {
-#   name        = "alb-security-group"
-#   description = "Allow inbound traffic for ALB"
-#   vpc_id      = aws_vpc.main.id
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-security-group"
+  description = "Allow inbound traffic for ALB"
+  vpc_id      = aws_vpc.main.id
 
-#   ingress {
-#     from_port   = 80
-#     to_port     = 80
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-#   tags = {
-#     Name = "alb-security-group"
-#   }
-# }
+  tags = {
+    Name = "alb-security-group"
+  }
+}
 
-# resource "aws_lb" "app_lb" {
-#   name               = "app-load-balancer"
-#   internal           = false
-#   load_balancer_type = "application"
-#   security_groups    = [aws_security_group.alb_sg.id]
-#   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+resource "aws_lb" "app_lb" {
+  name               = "app-load-balancer"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
-#   enable_deletion_protection = false
+  enable_deletion_protection = false
 
-#   tags = {
-#     Name = "app-load-balancer"
-#   }
-# }
+  tags = {
+    Name = "app-load-balancer"
+  }
+}
 
-# resource "aws_lb_target_group" "app_tg_blue" {
-#   name        = "app-tg-blue"
-#   port        = 8080
-#   protocol    = "HTTP"
-#   vpc_id      = aws_vpc.main.id
-#   target_type = "ip"
+resource "aws_lb_target_group" "app_tg_blue" {
+  name        = "app-tg-blue"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 
-#   health_check {
-#     enabled             = true
-#     interval            = 30
-#     path                = "/health"
-#     port                = "traffic-port"
-#     healthy_threshold   = 3
-#     unhealthy_threshold = 3
-#     timeout             = 5
-#     protocol            = "HTTP"
-#     matcher             = "200"
-#   }
-# }
+  health_check {
+    enabled             = true
+    interval            = 30
+    path                = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+}
 
-# resource "aws_lb_target_group" "app_tg_green" {
-#   name        = "app-tg-green"
-#   port        = 8080
-#   protocol    = "HTTP"
-#   vpc_id      = aws_vpc.main.id
-#   target_type = "ip"
+resource "aws_lb_target_group" "app_tg_green" {
+  name        = "app-tg-green"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 
-#   health_check {
-#     enabled             = true
-#     interval            = 30
-#     path                = "/health"
-#     port                = "traffic-port"
-#     healthy_threshold   = 3
-#     unhealthy_threshold = 3
-#     timeout             = 5
-#     protocol            = "HTTP"
-#     matcher             = "200"
-#   }
-# }
+  health_check {
+    enabled             = true
+    interval            = 30
+    path                = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+}
 
-# resource "aws_lb_listener" "app_listener" {
-#   load_balancer_arn = aws_lb.app_lb.arn
-#   port              = 80
-#   protocol          = "HTTP"
+resource "aws_lb_listener" "app_listener" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 80
+  protocol          = "HTTP"
 
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.app_tg_blue.arn
-#   }
-# }
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg_blue.arn
+  }
+}
 
-# resource "aws_lb_listener" "app_test_listener" {
-#   load_balancer_arn = aws_lb.app_lb.arn
-#   port              = 8080
-#   protocol          = "HTTP"
+resource "aws_lb_listener" "app_test_listener" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 8080
+  protocol          = "HTTP"
 
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.app_tg_green.arn
-#   }
-# }
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg_green.arn
+  }
+}
 
 # # ---------------------------------------------------------------------------------------------------------------------
 # # ECS Cluster, Task Definition, and Service
 # # ---------------------------------------------------------------------------------------------------------------------
-# resource "aws_ecs_cluster" "main" {
-#   name = "app-cluster"
-# }
+resource "aws_ecs_cluster" "main" {
+  name = "app-cluster"
+}
 
-# resource "aws_cloudwatch_log_group" "ecs_logs" {
-#   name              = "/ecs/python-app"
-#   retention_in_days = 30
-# }
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/python-app"
+  retention_in_days = 30
+}
 
-# resource "aws_ecs_task_definition" "app" {
-#   family                   = "python-app"
-#   network_mode             = "awsvpc"
-#   requires_compatibilities = ["FARGATE"]
-#   cpu                      = "256"
-#   memory                   = "512"
-#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+resource "aws_ecs_task_definition" "app" {
+  family                   = "python-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
-#   container_definitions = jsonencode([{
-#     name      = "python-app"
-#     image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
-#     essential = true
-#     portMappings = [{
-#       containerPort = 8080
-#       hostPort      = 8080
-#       protocol      = "tcp"
-#     }]
-#     logConfiguration = {
-#       logDriver = "awslogs"
-#       options   = {
-#         "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-#         "awslogs-region"        = "us-east-1"
-#         "awslogs-stream-prefix" = "ecs"
-#       }
-#     }
-#   }])
-# }
+  container_definitions = jsonencode([{
+    name      = "python-app"
+    image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
+    essential = true
+    portMappings = [{
+      containerPort = 8080
+      hostPort      = 8080
+      protocol      = "tcp"
+    }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options   = {
+        "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
+        "awslogs-region"        = "us-east-1"
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
 
-# resource "aws_ecs_service" "app_service" {
-#   name            = "python-app-service"
-#   cluster         = aws_ecs_cluster.main.id
-#   task_definition = aws_ecs_task_definition.app.arn
-#   desired_count   = 1
-#   launch_type     = "FARGATE"
+resource "aws_ecs_service" "app_service" {
+  name            = "python-app-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
 
-#   network_configuration {
-#     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-#     security_groups  = [aws_security_group.ecs_sg.id]
-#     assign_public_ip = true
-#   }
+  network_configuration {
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups  = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
+  }
 
-#   load_balancer {
-#     target_group_arn = aws_lb_target_group.app_tg_blue.arn
-#     container_name   = "python-app"
-#     container_port   = 8080
-#   }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app_tg_blue.arn
+    container_name   = "python-app"
+    container_port   = 8080
+  }
 
-#   deployment_controller {
-#     type = "CODE_DEPLOY"
-#   }
+  deployment_controller {
+    type = "CODE_DEPLOY"
+  }
 
-#   lifecycle {
-#     ignore_changes = [task_definition, load_balancer]
-#   }
-# }
+  lifecycle {
+    ignore_changes = [task_definition, load_balancer]
+  }
+}
 
-# # Uncommented and fixed CodeDeploy resources
-# resource "aws_iam_role" "codedeploy_role" {
-#   name = "codedeploy-role"
+# Uncommented and fixed CodeDeploy resources
+resource "aws_iam_role" "codedeploy_role" {
+  name = "codedeploy-role"
 
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Action    = "sts:AssumeRole"
-#       Effect    = "Allow"
-#       Principal = { Service = "codedeploy.amazonaws.com" }
-#     }]
-#   })
-# }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "codedeploy.amazonaws.com" }
+    }]
+  })
+}
 
-# resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
-#   role       = aws_iam_role.codedeploy_role.name
-#   policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
-# }
+resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
+  role       = aws_iam_role.codedeploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
+}
 
-# resource "aws_codedeploy_app" "app" {
-#   name             = "python-app-deploy"
-#   compute_platform = "ECS"
-# }
+resource "aws_codedeploy_app" "app" {
+  name             = "python-app-deploy"
+  compute_platform = "ECS"
+}
 
-# resource "aws_codedeploy_deployment_group" "app_deploy_group" {
-#   app_name               = aws_codedeploy_app.app.name
-#   deployment_group_name  = "python-app-deploy-group"
-#   deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
-#   service_role_arn       = aws_iam_role.codedeploy_role.arn
+resource "aws_codedeploy_deployment_group" "app_deploy_group" {
+  app_name               = aws_codedeploy_app.app.name
+  deployment_group_name  = "python-app-deploy-group"
+  deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
+  service_role_arn       = aws_iam_role.codedeploy_role.arn
 
-#   auto_rollback_configuration {
-#     enabled = true
-#     events  = ["DEPLOYMENT_FAILURE"]
-#   }
+  auto_rollback_configuration {
+    enabled = true
+    events  = ["DEPLOYMENT_FAILURE"]
+  }
 
-#   blue_green_deployment_config {
-#     deployment_ready_option {
-#       action_on_timeout = "CONTINUE_DEPLOYMENT"
-#     }
+  blue_green_deployment_config {
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
 
-#     terminate_blue_instances_on_deployment_success {
-#       action                           = "TERMINATE"
-#       termination_wait_time_in_minutes = 1
-#     }
-#   }
+    terminate_blue_instances_on_deployment_success {
+      action                           = "TERMINATE"
+      termination_wait_time_in_minutes = 1
+    }
+  }
 
-#   deployment_style {
-#     deployment_option = "WITH_TRAFFIC_CONTROL"
-#     deployment_type   = "BLUE_GREEN"
-#   }
+  deployment_style {
+    deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_type   = "BLUE_GREEN"
+  }
 
-#   ecs_service {
-#     cluster_name = aws_ecs_cluster.main.name
-#     service_name = aws_ecs_service.app_service.name
-#   }
+  ecs_service {
+    cluster_name = aws_ecs_cluster.main.name
+    service_name = aws_ecs_service.app_service.name
+  }
 
-#   load_balancer_info {
-#     target_group_pair_info {
-#       prod_traffic_route {
-#         listener_arns = [aws_lb_listener.app_listener.arn]
-#       }
+  load_balancer_info {
+    target_group_pair_info {
+      prod_traffic_route {
+        listener_arns = [aws_lb_listener.app_listener.arn]
+      }
 
-#       test_traffic_route {
-#         listener_arns = [aws_lb_listener.app_test_listener.arn]
-#       }
+      test_traffic_route {
+        listener_arns = [aws_lb_listener.app_test_listener.arn]
+      }
 
-#       target_group {
-#         name = aws_lb_target_group.app_tg_blue.name
-#       }
+      target_group {
+        name = aws_lb_target_group.app_tg_blue.name
+      }
 
-#       target_group {
-#         name = aws_lb_target_group.app_tg_green.name
-#       }
-#     }
-#   }
-# }
+      target_group {
+        name = aws_lb_target_group.app_tg_green.name
+      }
+    }
+  }
+}
 
 # ---------------------------------------------------------------------------------------------------------------------
 # CodeBuild Project
@@ -763,29 +763,29 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  # stage {
-  #   name = "Deploy"
+  stage {
+    name = "Deploy"
 
-  #   action {
-  #     name            = "Deploy"
-  #     category        = "Deploy"
-  #     owner           = "AWS"
-  #     provider        = "CodeDeployToECS"
-  #     input_artifacts = ["build_output"]
-  #     version         = "1"
+    action {
+      name            = "Deploy"
+      category        = "Deploy"
+      owner           = "AWS"
+      provider        = "CodeDeployToECS"
+      input_artifacts = ["build_output"]
+      version         = "1"
 
-  #     configuration = {
-  #       ApplicationName                = aws_codedeploy_app.app.name
-  #       DeploymentGroupName            = aws_codedeploy_deployment_group.app_deploy_group.deployment_group_name
-  #       TaskDefinitionTemplateArtifact = "build_output"
-  #       AppSpecTemplateArtifact        = "build_output"
-  #       AppSpecTemplatePath            = "appspec.yml"
-  #       TaskDefinitionTemplatePath     = "taskdef.json"
-  #       Image1ArtifactName             = "build_output"
-  #       Image1ContainerName            = "IMAGE1_NAME"
-  #     }
-  #   }
-  # }
+      configuration = {
+        ApplicationName                = aws_codedeploy_app.app.name
+        DeploymentGroupName            = aws_codedeploy_deployment_group.app_deploy_group.deployment_group_name
+        TaskDefinitionTemplateArtifact = "build_output"
+        AppSpecTemplateArtifact        = "build_output"
+        AppSpecTemplatePath            = "appspec.yml"
+        TaskDefinitionTemplatePath     = "taskdef.json"
+        Image1ArtifactName             = "build_output"
+        Image1ContainerName            = "IMAGE1_NAME"
+      }
+    }
+  }
 }
 
 # Enhanced IAM policy for CodePipeline to include CodeStar connection permissions
