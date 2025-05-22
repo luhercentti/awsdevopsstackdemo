@@ -749,6 +749,8 @@ resource "aws_codepipeline" "pipeline" {
         BranchName           = "main"
         OutputArtifactFormat = "CODEBUILD_CLONE_REF"  # This is crucial for GitHub
         DetectChanges       = true
+        OutputArtifactPath   = "source_output"  # Explicit path
+
       }
     }
   }
@@ -767,6 +769,8 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ProjectName = aws_codebuild_project.app_build.name
+        PrimarySource = "source_output"
+        OutputArtifactPath = "build_output"  # Explicit path
       }
     }
   }
