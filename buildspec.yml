@@ -46,6 +46,8 @@ phases:
 
 artifacts:
   files:
-    - 'output/**/*'  # Include all files from output directory
+    - 'output/taskdef.json'
+    - 'output/appspec.yml'
+    - 'output/imagedefinitions.json'
   base-directory: $CODEBUILD_SRC_DIR
   discard-paths: no
