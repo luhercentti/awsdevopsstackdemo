@@ -49,5 +49,6 @@ artifacts:
     - 'output/taskdef.json'
     - 'output/appspec.yml'
     - 'output/imagedefinitions.json'
-  base-directory: $CODEBUILD_SRC_DIR
+  base-directory: $CODEBUILD_SRC_DIR/output
+  name: build_output  # Explicit artifact name
   discard-paths: no
