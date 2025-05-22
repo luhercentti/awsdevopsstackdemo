@@ -785,11 +785,11 @@ resource "aws_codepipeline" "pipeline" {
       configuration = {
         ApplicationName                = aws_codedeploy_app.app.name
         DeploymentGroupName            = aws_codedeploy_deployment_group.app_deploy_group.deployment_group_name
-        TaskDefinitionTemplateArtifact = "build_output"
-        AppSpecTemplateArtifact        = "build_output"
+        TaskDefinitionTemplateArtifact = "build_out"
+        AppSpecTemplateArtifact        = "build_out"
         AppSpecTemplatePath            = "appspec.yml"
         TaskDefinitionTemplatePath     = "taskdef.json"
-        Image1ArtifactName             = "build_output"
+        Image1ArtifactName             = "build_out"
         Image1ContainerName            = "python-app"
       }
     }
