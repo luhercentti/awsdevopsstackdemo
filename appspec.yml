@@ -7,11 +7,6 @@ Resources:
         LoadBalancerInfo:
           ContainerName: "python-app"  # Must match your container name exactly
           ContainerPort: 8080
-InputArtifacts:
-  - Name: "build_output"
-    Source:
-      - "taskdef.json"
-      - "appspec.yml"
 # Hooks:
 #   - BeforeInstall: "ValidateService"
 #   - AfterInstall: "AfterInstall"
