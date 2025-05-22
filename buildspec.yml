@@ -10,7 +10,6 @@ phases:
       - echo Setting up task definition template...
       - cp taskdef.json.template taskdef.json
       - EXECUTION_ROLE_ARN=$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)
-      - echo "Execution Role ARN is $EXECUTION_ROLE_ARN"
       - sed -i "s|EXECUTION_ROLE_ARN|$EXECUTION_ROLE_ARN|g" taskdef.json
   
   build:
@@ -26,14 +25,9 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo "Final image URI is $ECR_REPOSITORY_URI:$IMAGE_TAG"
-      - echo "Verifying artifacts..."
-      - echo "--- appspec.yml ---"
+      - echo Verifying artifacts...
       - cat appspec.yml
-      - echo "--- taskdef.json ---"
       - cat taskdef.json
-      - echo "Task definition should contain IMAGE1_NAME placeholder for CodeDeploy"
-      - grep "IMAGE1_NAME" taskdef.json || echo "WARNING: IMAGE1_NAME placeholder not found!"
 
 artifacts:
   files:
