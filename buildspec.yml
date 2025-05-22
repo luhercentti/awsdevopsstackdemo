@@ -9,8 +9,8 @@ phases:
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo Setting up task definition template...
       - cp taskdef.json.template taskdef.json
-      - EXECUTION_ROLE_ARN=$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)
-      - sed -i "s|EXECUTION_ROLE_ARN|$EXECUTION_ROLE_ARN|g" taskdef.json
+      - sed -i "s|EXECUTION_ROLE_ARN|$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)|g" taskdef.json
+      - sed -i "s|IMAGE1_NAME|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" taskdef.json
   
   build:
     commands:
@@ -25,11 +25,28 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo Verifying artifacts...
+      # Create directory if it doesn't exist
+      - mkdir -p $CODEBUILD_SRC_DIR/output
+      - echo "Generating image definitions..."
+      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+       # Verify the file was created
+      - echo "File contents:"
+      - echo "--- imagedefinitions.json ---"
+      - cat $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+      - echo "File size:"
+      - ls -la $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+      - echo "Verifying artifacts..."
+      - echo "--- appspec.yml ---"
       - cat appspec.yml
+      - echo "--- taskdef.json ---"
       - cat taskdef.json
+      - echo "File listing:"
+      - ls -la
 
 artifacts:
   files:
+    - imagedefinitions.json
     - appspec.yml
     - taskdef.json
+  base-directory: $CODEBUILD_SRC_DIR  # Add this line
+  discard-paths: no  # Changed to preserve directory structure
