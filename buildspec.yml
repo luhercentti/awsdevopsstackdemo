@@ -9,8 +9,10 @@ phases:
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo Setting up task definition template...
       - cp taskdef.json.template taskdef.json
-      - sed -i "s|EXECUTION_ROLE_ARN|$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)|g" taskdef.json
-      - sed -i "s|IMAGE1_NAME|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" taskdef.json
+      - EXECUTION_ROLE_ARN=$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)
+      - echo "Execution Role ARN: $EXECUTION_ROLE_ARN"
+      - sed -i "s|EXECUTION_ROLE_ARN|$EXECUTION_ROLE_ARN|g" taskdef.json
+      # Don't replace IMAGE1_NAME here - CodeDeploy will handle it
   
   build:
     commands:
@@ -25,28 +27,16 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      # Create directory if it doesn't exist
-      - mkdir -p $CODEBUILD_SRC_DIR/output
-      - echo "Generating image definitions..."
-      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > $CODEBUILD_SRC_DIR/output/imagedefinitions.json
-       # Verify the file was created
-      - echo "File contents:"
-      - echo "--- imagedefinitions.json ---"
-      - cat $CODEBUILD_SRC_DIR/output/imagedefinitions.json
-      - echo "File size:"
-      - ls -la $CODEBUILD_SRC_DIR/output/imagedefinitions.json
+      - echo "Final image URI: $ECR_REPOSITORY_URI:$IMAGE_TAG"
       - echo "Verifying artifacts..."
       - echo "--- appspec.yml ---"
       - cat appspec.yml
       - echo "--- taskdef.json ---"
       - cat taskdef.json
-      - echo "File listing:"
-      - ls -la
+      - echo "Task definition should contain IMAGE1_NAME placeholder for CodeDeploy"
+      - grep "IMAGE1_NAME" taskdef.json || echo "WARNING: IMAGE1_NAME placeholder not found!"
 
 artifacts:
   files:
-    - imagedefinitions.json
     - appspec.yml
     - taskdef.json
-  base-directory: $CODEBUILD_SRC_DIR  # Add this line
-  discard-paths: no  # Changed to preserve directory structure
