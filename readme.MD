@@ -6,7 +6,7 @@ AWS CodePipeline Workflow
 
 Source Stage: AWS CodePipeline pulls code from your GitHub repository
 Build Stage: CodeBuild uses your Python setup to test and build the app
-Deploy Stage: CodeDeploy deploys the app to EC2 instances
+Deploy Stage: CodeDeploy deploys the app to ECS
 
 
 ## Project Structure
