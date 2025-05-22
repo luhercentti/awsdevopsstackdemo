@@ -43,6 +43,9 @@ phases:
       # Verify files
       - echo "Final artifacts in output directory:"
       - ls -la output/
+      - cat output/appspec.yml
+      - cat output/taskdef.json
+      - cat output/imagedefinitions.json
 
 artifacts:
   files:
