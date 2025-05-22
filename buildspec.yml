@@ -8,8 +8,14 @@ phases:
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo Setting up task definition template...
+      
+      # Get execution role ARN with error handling
+      - EXECUTION_ROLE_ARN=$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)
+      - if [ -z "$EXECUTION_ROLE_ARN" ]; then echo "Error: Failed to get execution role ARN"; exit 1; fi
+      - echo "Execution Role ARN: $EXECUTION_ROLE_ARN"
+      
       - cp taskdef.json.template taskdef.json
-      - sed -i "s|EXECUTION_ROLE_ARN|$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)|g" taskdef.json
+      - sed -i "s|EXECUTION_ROLE_ARN|$EXECUTION_ROLE_ARN|g" taskdef.json
       - sed -i "s|IMAGE1_NAME|$ECR_REPOSITORY_URI:$IMAGE_TAG|g" taskdef.json
   
   build:
@@ -25,28 +31,22 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      # Create directory if it doesn't exist
-      - mkdir -p $CODEBUILD_SRC_DIR/output
+      
+      # Prepare output directory
+      - mkdir -p output
       - echo "Generating image definitions..."
-      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > $CODEBUILD_SRC_DIR/output/imagedefinitions.json
-       # Verify the file was created
-      - echo "File contents:"
-      - echo "--- imagedefinitions.json ---"
-      - cat $CODEBUILD_SRC_DIR/output/imagedefinitions.json
-      - echo "File size:"
-      - ls -la $CODEBUILD_SRC_DIR/output/imagedefinitions.json
-      - echo "Verifying artifacts..."
-      - echo "--- appspec.yml ---"
-      - cat appspec.yml
-      - echo "--- taskdef.json ---"
-      - cat taskdef.json
-      - echo "File listing:"
-      - ls -la
+      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > output/imagedefinitions.json
+      
+      # Copy all deployment files to output directory
+      - cp appspec.yml output/
+      - cp taskdef.json output/
+      
+      # Verify files
+      - echo "Final artifacts in output directory:"
+      - ls -la output/
 
 artifacts:
   files:
-    - imagedefinitions.json
-    - appspec.yml
-    - taskdef.json
-  base-directory: $CODEBUILD_SRC_DIR  # Add this line
-  discard-paths: no  # Changed to preserve directory structure
+    - 'output/**/*'  # Include all files from output directory
+  base-directory: $CODEBUILD_SRC_DIR
+  discard-paths: no
