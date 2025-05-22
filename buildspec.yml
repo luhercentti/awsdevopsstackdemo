@@ -10,7 +10,7 @@ phases:
       - echo Setting up task definition template...
       - cp taskdef.json.template taskdef.json
       - EXECUTION_ROLE_ARN=$(aws ecs describe-task-definition --task-definition python-app --query taskDefinition.executionRoleArn --output text)
-      - echo "Execution Role ARN - $EXECUTION_ROLE_ARN"
+      - echo "Execution Role ARN is $EXECUTION_ROLE_ARN"
       - sed -i "s|EXECUTION_ROLE_ARN|$EXECUTION_ROLE_ARN|g" taskdef.json
   
   build:
@@ -26,7 +26,7 @@ phases:
       - echo Pushing the Docker image...
       - docker push $ECR_REPOSITORY_URI:latest
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo "Final image URI: $ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - echo "Final image URI is $ECR_REPOSITORY_URI:$IMAGE_TAG"
       - echo "Verifying artifacts..."
       - echo "--- appspec.yml ---"
       - cat appspec.yml
