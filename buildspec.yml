@@ -34,21 +34,20 @@ phases:
       # Prepare output directory
       - mkdir -p output
       - echo "Generating image definitions..."
-      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > output/imagedefinitions.json
+      - echo '[{"name":"python-app","imageUri":"'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"}]' > imagedefinitions.json
       
       # Copy all deployment files to output directory
       - cp appspec.yml output/
       - cp taskdef.json output/
-      
+      - cp imagedefinitions.json output/
       # Verify files
       - echo "Final artifacts in output directory:"
       - ls -la output/
 
 artifacts:
   files:
-    - 'output/taskdef.json'
-    - 'output/appspec.yml'
-    - 'output/imagedefinitions.json'
-  base-directory: $CODEBUILD_SRC_DIR/output
-  name: build_output  # Explicit artifact name
-  discard-paths: no
+    - 'taskdef.json'
+    - 'appspec.yml'
+    - 'imagedefinitions.json'
+  base-directory: 'output'  # Changed from $CODEBUILD_SRC_DIR/output
+  discard-paths: yes  # Changed from no
