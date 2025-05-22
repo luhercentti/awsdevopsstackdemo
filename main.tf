@@ -174,6 +174,14 @@ resource "aws_iam_role_policy" "codebuild_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+       {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeTaskDefinition",
+          "ecs:DescribeTaskDefinitions"
+        ]
+        Resource = "*"
+      },
       {
         Effect = "Allow"
         Action = [
