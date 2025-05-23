@@ -2,7 +2,7 @@
 
 # Blue-Green Deployment Workflow
 
-## Initial Deployment (First Time)
+## Initial Deployment
 
 When you deploy the Terraform configuration for the first time:
 
