@@ -371,14 +371,14 @@ resource "aws_lb_target_group" "app_tg_blue" {
 
   health_check {
     enabled             = true
-    interval            = 30
+    interval            = 60
     path                = "/health"
     port                = "traffic-port"
     healthy_threshold   = 3
     unhealthy_threshold = 3
-    timeout             = 10
+    timeout             = 30
     protocol            = "HTTP"
-    matcher             = "200-499"
+    matcher             = "200"
   }
 }
 
@@ -471,7 +471,7 @@ resource "aws_ecs_service" "app_service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
-  health_check_grace_period_seconds = 120  # super important for the task to not be marked as unhealthy, ECS marks tasks unhealthy before they can respond properly
+  health_check_grace_period_seconds = 60  # super important for the task to not be marked as unhealthy, ECS marks tasks unhealthy before they can respond properly
 
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
