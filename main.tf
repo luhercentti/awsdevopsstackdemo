@@ -74,6 +74,13 @@ resource "aws_security_group" "ecs_sg" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -371,15 +378,18 @@ resource "aws_lb_target_group" "app_tg_blue" {
 
   health_check {
     enabled             = true
-    interval            = 30
+    interval            = 15
     path                = "/health"
     port                = "traffic-port"
-    healthy_threshold   = 3
+    healthy_threshold   = 2
     unhealthy_threshold = 3
     timeout             = 5
     protocol            = "HTTP"
     matcher             = "200"
   }
+
+  deregistration_delay = 60
+
 }
 
 resource "aws_lb_target_group" "app_tg_green" {
@@ -391,15 +401,18 @@ resource "aws_lb_target_group" "app_tg_green" {
 
   health_check {
     enabled             = true
-    interval            = 30
+    interval            = 15
     path                = "/health"
     port                = "traffic-port"
-    healthy_threshold   = 3
+    healthy_threshold   = 2
     unhealthy_threshold = 3
-    timeout             = 5
+    timeout             = 10
     protocol            = "HTTP"
     matcher             = "200"
   }
+
+  deregistration_delay = 60
+
 }
 
 resource "aws_lb_listener" "app_listener" {
@@ -471,7 +484,7 @@ resource "aws_ecs_service" "app_service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
-  #health_check_grace_period_seconds = 60  # Give container time to start
+  health_check_grace_period_seconds = 300  # Give container time to start - critical
 
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
@@ -521,22 +534,24 @@ resource "aws_codedeploy_app" "app" {
 resource "aws_codedeploy_deployment_group" "app_deploy_group" {
   app_name               = aws_codedeploy_app.app.name
   deployment_group_name  = "python-app-deploy-group"
-  deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"
+  #deployment_config_name = "CodeDeployDefault.ECSAllAtOnce"   ## Too aggresive
+  deployment_config_name = "CodeDeployDefault.ECSLinear10PercentEvery1Minutes"
   service_role_arn       = aws_iam_role.codedeploy_role.arn
 
   auto_rollback_configuration {
     enabled = true
-    events  = ["DEPLOYMENT_FAILURE"]
+    events  = ["DEPLOYMENT_FAILURE", "DEPLOYMENT_STOP_ON_ALARM"]
   }
 
   blue_green_deployment_config {
     deployment_ready_option {
       action_on_timeout = "CONTINUE_DEPLOYMENT"
+      wait_time_in_minutes = 0
     }
 
     terminate_blue_instances_on_deployment_success {
       action                           = "TERMINATE"
-      termination_wait_time_in_minutes = 1
+      termination_wait_time_in_minutes = 5
     }
   }
 
