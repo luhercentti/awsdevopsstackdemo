@@ -81,6 +81,14 @@ resource "aws_security_group" "ecs_sg" {
   }
 
   ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+    description = "Allow health checks from within VPC"
+  }
+
+  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -343,6 +351,13 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -378,17 +393,21 @@ resource "aws_lb_target_group" "app_tg_blue" {
 
   health_check {
     enabled             = true
-    interval            = 15
+    interval            = 30
     path                = "/health"
     port                = "traffic-port"
     healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
+    unhealthy_threshold = 5
+    timeout             = 15
     protocol            = "HTTP"
     matcher             = "200"
   }
 
-  deregistration_delay = 60
+  deregistration_delay = 30
+
+  tags = {
+    Name = "app-target-group-blue"
+  }
 
 }
 
@@ -401,17 +420,21 @@ resource "aws_lb_target_group" "app_tg_green" {
 
   health_check {
     enabled             = true
-    interval            = 15
+    interval            = 30
     path                = "/health"
     port                = "traffic-port"
     healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 10
+    unhealthy_threshold = 5
+    timeout             = 15
     protocol            = "HTTP"
     matcher             = "200"
   }
 
   deregistration_delay = 60
+
+  tags = {
+    Name = "app-target-group-green"
+  }
 
 }
 
